@@ -69,19 +69,13 @@ wxBEGIN_EVENT_TABLE(mmCheckingPanel, wxPanel)
 wxEND_EVENT_TABLE()
 //----------------------------------------------------------------------------
 
-wxBEGIN_EVENT_TABLE(TransactionListCtrl, wxListCtrl)
+wxBEGIN_EVENT_TABLE(TransactionListCtrl, mmListCtrl)
     EVT_LIST_ITEM_SELECTED(wxID_ANY, TransactionListCtrl::OnListItemSelected)
     EVT_LIST_ITEM_ACTIVATED(wxID_ANY, TransactionListCtrl::OnListItemActivated)
     EVT_RIGHT_DOWN(TransactionListCtrl::OnMouseRightClick)
     EVT_LEFT_DOWN(TransactionListCtrl::OnListLeftClick)
-    EVT_LIST_COL_END_DRAG(wxID_ANY, TransactionListCtrl::OnItemResize)
     EVT_LIST_COL_CLICK(wxID_ANY, TransactionListCtrl::OnColClick)
-    EVT_LIST_COL_RIGHT_CLICK(wxID_ANY, TransactionListCtrl::OnColRightClick)
     EVT_LIST_KEY_DOWN(wxID_ANY,  TransactionListCtrl::OnListKeyDown)
-
-    EVT_MENU(MENU_HEADER_HIDE, TransactionListCtrl::OnHeaderHide)
-    EVT_MENU(MENU_HEADER_SORT, TransactionListCtrl::OnHeaderSort)
-    EVT_MENU(MENU_HEADER_RESET, TransactionListCtrl::OnHeaderReset)
 
     EVT_MENU_RANGE(MENU_TREEPOPUP_MARKRECONCILED
         , MENU_TREEPOPUP_MARKDELETE,        TransactionListCtrl::OnMarkTransaction)
@@ -168,7 +162,7 @@ bool mmCheckingPanel::Create(
 void mmCheckingPanel::sortTable()
 {
     std::sort(this->m_trans.begin(), this->m_trans.end());
-    switch (m_listCtrlAccount->g_sortcol)
+    switch (m_listCtrlAccount->g_selected_col)
     {
     case TransactionListCtrl::COL_ID:
         std::stable_sort(this->m_trans.begin(), this->m_trans.end(),SorterByTRANSID());
@@ -275,7 +269,7 @@ void mmCheckingPanel::updateTable()
 
     setAccountSummary();
 
-    if (m_listCtrlAccount->g_sortcol == TransactionListCtrl::COL_STATUS)
+    if (m_listCtrlAccount->g_selected_col == TransactionListCtrl::COL_STATUS)
     {
         sortTable();
         m_listCtrlAccount->RefreshItems(0, m_trans.size() - 1);
@@ -409,7 +403,7 @@ void mmCheckingPanel::CreateControls()
     wxStaticText* itemStaticText18 = new wxStaticText(headerPanel
         , ID_PANEL_CHECKING_STATIC_BALHEADER5, "$", wxDefaultPosition, wxSize(120, -1));
 
-    wxFlexGridSizer* balances_header = new wxFlexGridSizer(0,8,5,10);
+    wxFlexGridSizer* balances_header = new wxFlexGridSizer(0, 8, 5, 10);
     itemBoxSizerVHeader->Add(balances_header, flagsExpand);
     balances_header->Add(new wxStaticText(headerPanel, wxID_STATIC, _("Account Bal: ")));
     balances_header->Add(itemStaticText12);
@@ -438,28 +432,26 @@ void mmCheckingPanel::CreateControls()
     m_imageList->Add(wxImage(trash_xpm).Scale(16, 16));
 
     m_listCtrlAccount = new TransactionListCtrl(this, itemSplitterWindow10
-        , wxID_ANY);
+        , mmID_CHECKING_LIST);
 
     m_listCtrlAccount->SetImageList(m_imageList.get(), wxIMAGE_LIST_SMALL);
     m_listCtrlAccount->setSortOrder(m_listCtrlAccount->g_asc);
-    m_listCtrlAccount->setSortColumn(m_listCtrlAccount->g_sortcol);
+    m_listCtrlAccount->setSortColumn(m_listCtrlAccount->g_selected_col);
     m_listCtrlAccount->SetFocus();
-
-    m_listCtrlAccount->createColumns(*m_listCtrlAccount);
 
     // load the global variables
     long val = m_listCtrlAccount->COL_DEF_SORT;
     wxString strVal = Model_Setting::instance().GetStringSetting("CHECK_SORT_COL", wxString() << val);
-    if (strVal.ToLong(&val)) m_listCtrlAccount->g_sortcol = m_listCtrlAccount->toEColumn(val);
+    if (strVal.ToLong(&val)) m_listCtrlAccount->g_selected_col = m_listCtrlAccount->toEColumn(val);
     // --
     val = 1; // asc sorting default
     strVal = Model_Setting::instance().GetStringSetting("CHECK_ASC", wxString() << val);
     if (strVal.ToLong(&val)) m_listCtrlAccount->g_asc = val != 0;
 
     // --
-    m_listCtrlAccount->setSortColumn(m_listCtrlAccount->g_sortcol);
+    m_listCtrlAccount->setSortColumn(m_listCtrlAccount->g_selected_col);
     m_listCtrlAccount->setSortOrder(m_listCtrlAccount->g_asc);
-    m_listCtrlAccount->setColumnImage(m_listCtrlAccount->getSortColumn()
+    m_listCtrlAccount->setColumnImage(m_listCtrlAccount->g_selected_col
         , m_listCtrlAccount->getSortOrder() ? m_listCtrlAccount->ICON_ASC : m_listCtrlAccount->ICON_DESC); // asc\desc sort mark (arrow)
 
     wxPanel *itemPanel12 = new wxPanel(itemSplitterWindow10, wxID_ANY
@@ -954,9 +946,6 @@ TransactionListCtrl::TransactionListCtrl(
     m_attr15(*wxBLACK, mmColors::userDefColor5, wxNullFont),
     m_attr16(*wxYELLOW, mmColors::userDefColor6, wxNullFont),
     m_attr17(*wxYELLOW, mmColors::userDefColor7, wxNullFont),
-    m_sortCol(COL_DEF_SORT),
-    g_sortcol(COL_DEF_SORT),
-    g_asc(true),
     m_selectedID(-1),
     topItemIndex_(-1)
 {
@@ -985,31 +974,6 @@ TransactionListCtrl::TransactionListCtrl(
 }
 
 //----------------------------------------------------------------------------
-void TransactionListCtrl::createColumns(mmListCtrl &lst)
-{
-    lst.InsertColumn(COL_IMGSTATUS, " ", wxLIST_FORMAT_LEFT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("CHECK_COL%i_WIDTH", COL_IMGSTATUS), 25));
-    lst.InsertColumn(COL_ID, _("ID"), wxLIST_FORMAT_RIGHT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("CHECK_COL%i_WIDTH", COL_ID), wxLIST_AUTOSIZE));
-    lst.InsertColumn(COL_DATE, _("Date"), wxLIST_FORMAT_LEFT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("CHECK_COL%i_WIDTH", COL_DATE), 112));
-    lst.InsertColumn(COL_NUMBER, _("Number"), wxLIST_FORMAT_LEFT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("CHECK_COL%i_WIDTH", COL_NUMBER), 70));
-    lst.InsertColumn(COL_PAYEE_STR, _("Payee"), wxLIST_FORMAT_LEFT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("CHECK_COL%i_WIDTH", COL_PAYEE_STR), 150));
-    lst.InsertColumn(COL_STATUS, _("Status"), wxLIST_FORMAT_LEFT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("CHECK_COL%i_WIDTH", COL_STATUS), wxLIST_AUTOSIZE_USEHEADER));
-    lst.InsertColumn(COL_CATEGORY, _("Category"), wxLIST_FORMAT_LEFT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("CHECK_COL%i_WIDTH", COL_CATEGORY), 150));
-    lst.InsertColumn(COL_WITHDRAWAL, _("Withdrawal"), wxLIST_FORMAT_RIGHT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("CHECK_COL%i_WIDTH", COL_WITHDRAWAL), wxLIST_AUTOSIZE_USEHEADER));
-    lst.InsertColumn(COL_DEPOSIT, _("Deposit"), wxLIST_FORMAT_RIGHT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("CHECK_COL%i_WIDTH", COL_DEPOSIT), wxLIST_AUTOSIZE_USEHEADER));
-    lst.InsertColumn(COL_BALANCE, _("Balance"), wxLIST_FORMAT_RIGHT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("CHECK_COL%i_WIDTH", COL_BALANCE), wxLIST_AUTOSIZE_USEHEADER));
-    lst.InsertColumn(COL_NOTES, _("Notes"), wxLIST_FORMAT_LEFT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("CHECK_COL%i_WIDTH", COL_NOTES), 250));
-}
 
 void TransactionListCtrl::OnListItemSelected(wxListEvent& event)
 {
@@ -1023,18 +987,6 @@ void TransactionListCtrl::OnListItemSelected(wxListEvent& event)
     m_selectedID = m_cp->m_trans[m_selectedIndex].TRANSID;
 }
 //----------------------------------------------------------------------------
-
-void TransactionListCtrl::OnItemResize(wxListEvent& event)
-{
-    int i = event.GetColumn();
-    const wxString parameter_name = wxString::Format("CHECK_COL%i_WIDTH", i);
-    /* 
-    On Windows there is a bug in GetColumnWidth():
-    http://www.nntp.perl.org/group/perl.wxperl.users/2007/06/msg4066.html
-    */
-    int current_width = event.GetItem().GetWidth();
-    Model_Setting::instance().Set(parameter_name, current_width);
-}
 
 void TransactionListCtrl::OnListLeftClick(wxMouseEvent& event)
 {
@@ -1240,81 +1192,28 @@ void TransactionListCtrl::OnMarkAllTransactions(wxCommandEvent& event)
 }
 //----------------------------------------------------------------------------
 
-void TransactionListCtrl::OnColRightClick(wxListEvent& event)
-{
-    ColumnHeaderNr = event.GetColumn();
-    if (0 > ColumnHeaderNr || ColumnHeaderNr >= COL_MAX) return;
-    wxMenu menu;
-    menu.Append(MENU_HEADER_HIDE, _("Hide column"));
-    menu.Append(MENU_HEADER_SORT, _("Order by this column"));
-    menu.Append(MENU_HEADER_RESET, _("Reset columns size"));
-    PopupMenu(&menu);
-    this->SetFocus();
-}
-//----------------------------------------------------------------------------
-
-void TransactionListCtrl::OnHeaderHide(wxCommandEvent& event)
-{
-    TransactionListCtrl::SetColumnWidth(ColumnHeaderNr, 0);
-    const wxString parameter_name = wxString::Format("CHECK_COL%i_WIDTH", ColumnHeaderNr);
-    Model_Setting::instance().Set(parameter_name, 0);
-}
-
-void TransactionListCtrl::OnHeaderSort(wxCommandEvent& event)
-{
-    wxListEvent e;
-    e.SetId(MENU_HEADER_SORT);
-    TransactionListCtrl::OnColClick(e);
-}
-
-void TransactionListCtrl::OnHeaderReset(wxCommandEvent& event)
-{
-    wxString parameter_name;
-    for (int i = 0; i < COL_MAX; i++)
-    {
-        TransactionListCtrl::SetColumnWidth(i, wxLIST_AUTOSIZE_USEHEADER);
-        parameter_name = wxString::Format("CHECK_COL%i_WIDTH", i);
-        Model_Setting::instance().Set(parameter_name, TransactionListCtrl::GetColumnWidth(i));
-    }
-    wxListEvent e;
-    e.SetId(MENU_HEADER_SORT);
-    ColumnHeaderNr = COL_DEF_SORT;
-	m_asc = true;
-    TransactionListCtrl::OnColClick(e);
-}
-
-//----------------------------------------------------------------------------
-
-
 void TransactionListCtrl::OnColClick(wxListEvent& event)
 {
-    int ColumnNr;
-    if (event.GetId() != MENU_HEADER_SORT)
-        ColumnNr = event.GetColumn();
-    else
-        ColumnNr = ColumnHeaderNr;
+    int ColumnNr = event.GetColumn();
 
     if (0 > ColumnNr || ColumnNr >= COL_MAX || ColumnNr == COL_IMGSTATUS) return;
 
     /* Clear previous column image */
-    setColumnImage(m_sortCol, -1);
+    setColumnImage(g_selected_col, -1);
 
-	if (g_sortcol == ColumnNr && event.GetId() != MENU_HEADER_SORT) m_asc = !m_asc; // toggle sort order
-    g_asc = m_asc;
+    if (g_selected_col == ColumnNr) g_asc = !g_asc; // toggle sort order
 
     m_sortCol = toEColumn(ColumnNr);
-    g_sortcol = m_sortCol;
+    g_selected_col = toEColumn(ColumnNr);
 
-    setColumnImage(m_sortCol, m_asc ? ICON_ASC : ICON_DESC);
-    Model_Setting::instance().Set("CHECK_ASC", (g_asc ? 1 : 0));
-    Model_Setting::instance().Set("CHECK_SORT_COL", g_sortcol);
+    setColumnImage(m_sortCol, g_asc ? ICON_ASC : ICON_DESC);
 
     refreshVisualList(m_selectedID, false);
 
 }
 //----------------------------------------------------------------------------
 
-void TransactionListCtrl::setColumnImage(EColumn col, int image)
+void TransactionListCtrl::setColumnImage(int col, int image)
 {
     wxListItem item;
     item.SetMask(wxLIST_MASK_IMAGE);
@@ -1623,7 +1522,7 @@ void TransactionListCtrl::refreshVisualList(int trans_id, bool filter)
     Hide();
 
     // decide whether top or down icon needs to be shown
-    setColumnImage(g_sortcol, g_asc ? ICON_ASC : ICON_DESC);
+    setColumnImage(g_selected_col, g_asc ? ICON_ASC : ICON_DESC);
     if (filter) m_cp->filterTable();
     SetItemCount(m_cp->m_trans.size());
     Show();

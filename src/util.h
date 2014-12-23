@@ -145,6 +145,9 @@ void correctEmptyFileExt(const wxString& ext, wxString & fileName );
 
 void mmLoadColorsFromDatabase();
 
+json::Object str2json_obj(const wxString& str);
+const wxString json_obj2str(const json::Object& o);
+
 class mmColors
 {
 public:

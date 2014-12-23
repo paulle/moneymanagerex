@@ -53,15 +53,7 @@ private:
     void OnListItemSelected(wxListEvent& event);
     void OnColClick(wxListEvent& event);
     void OnEndLabelEdit(wxListEvent& event);
-    void OnItemResize(wxListEvent& event);
     bool EditAsset(Model_Asset::Data* pEntry);
-
-    /* Headers Right Click*/
-    int ColumnHeaderNr;
-    void OnColRightClick(wxListEvent& event);
-    void OnHeaderHide(wxCommandEvent& event);
-    void OnHeaderSort(wxCommandEvent& event);
-    void OnHeaderReset(wxCommandEvent& event);
 
     enum {
         MENU_TREEPOPUP_NEW = wxID_HIGHEST + 1200,
@@ -69,9 +61,6 @@ private:
         MENU_TREEPOPUP_DELETE,
         MENU_ON_DUPLICATE_TRANSACTION,
 		MENU_TREEPOPUP_ORGANIZE_ATTACHMENTS,
-        MENU_HEADER_HIDE,
-        MENU_HEADER_SORT,
-        MENU_HEADER_RESET,
     };
 };
 

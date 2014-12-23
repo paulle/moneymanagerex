@@ -40,7 +40,6 @@ public:
     TransactionListCtrl(mmCheckingPanel *cp, wxWindow *parent
         , const wxWindowID id);
 
-    void createColumns(mmListCtrl &lst);
     enum EIcons //m_imageList
     {
         ICON_RECONCILED,
@@ -77,16 +76,12 @@ public:
         return res;
     }
 
-    EColumn g_sortcol; // index of column to sort
-    bool g_asc; // asc\desc sorting
+    bool getSortOrder() const { return g_asc; }
 
-    bool getSortOrder() const { return m_asc; }
-    EColumn getSortColumn() const { return m_sortCol; }
+    void setSortOrder(bool asc) { g_asc = asc; }
+    void setSortColumn(int col) { g_selected_col = col; }
 
-    void setSortOrder(bool asc) { m_asc = asc; }
-    void setSortColumn(EColumn col) { m_sortCol = col; }
-
-    void setColumnImage(EColumn col, int image);
+    void setColumnImage(int col, int image);
 
     void OnNewTransaction(wxCommandEvent& event);
     void OnDeleteTransaction(wxCommandEvent& event);
@@ -152,10 +147,6 @@ private:
         MENU_TREEPOPUP_MOVE2,
         MENU_TREEPOPUP_DELETE2,
         ID_PANEL_CHECKING_STATIC_BITMAP_VIEW,
-
-        MENU_HEADER_HIDE,
-        MENU_HEADER_SORT,
-        MENU_HEADER_RESET,
     };
 
     DECLARE_NO_COPY_CLASS(TransactionListCtrl)
@@ -184,7 +175,6 @@ private:
 
     void OnMouseRightClick(wxMouseEvent& event);
     void OnListLeftClick(wxMouseEvent& event);
-    void OnItemResize(wxListEvent& event);
     void OnListItemSelected(wxListEvent& event);
     void OnListItemActivated(wxListEvent& event);
     void OnMarkTransaction(wxCommandEvent& event);
@@ -198,13 +188,6 @@ private:
 
     /* Sort Columns */
     void OnColClick(wxListEvent& event);
-
-    /* Headers Right Click*/
-    int ColumnHeaderNr;
-    void OnColRightClick(wxListEvent& event);
-    void OnHeaderHide(wxCommandEvent& event);
-    void OnHeaderSort(wxCommandEvent& event);
-    void OnHeaderReset(wxCommandEvent& event);
 
     /* The topmost visible item - this will be used to set
     where to display the list again after refresh */

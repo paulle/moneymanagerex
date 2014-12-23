@@ -234,7 +234,7 @@
     <ClCompile Include="..\..\src\webapp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-	<ClCompile Include="..\..\src\webappdialog.cpp">
+    <ClCompile Include="..\..\src\webappdialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\3rd\csv-parser\csv_parser.cpp">
@@ -314,6 +314,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\reports\myusage.cpp">
       <Filter>Source Files\reports</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\mmpanelbase.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -578,7 +581,7 @@
     <ClInclude Include="..\..\src\webapp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-	<ClInclude Include="..\..\src\webappdialog.h">
+    <ClInclude Include="..\..\src\webappdialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\db\DB_Table_Attachment_V1.h">

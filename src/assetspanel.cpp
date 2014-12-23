@@ -41,9 +41,7 @@
 wxBEGIN_EVENT_TABLE(mmAssetsListCtrl, mmListCtrl)
     EVT_LIST_ITEM_ACTIVATED(wxID_ANY,   mmAssetsListCtrl::OnListItemActivated)
     EVT_LIST_ITEM_SELECTED(wxID_ANY,    mmAssetsListCtrl::OnListItemSelected)
-    EVT_LIST_COL_END_DRAG(wxID_ANY,     mmAssetsListCtrl::OnItemResize)
     EVT_LIST_COL_CLICK(wxID_ANY,        mmAssetsListCtrl::OnColClick)
-    EVT_LIST_COL_RIGHT_CLICK(wxID_ANY,  mmAssetsListCtrl::OnColRightClick)
     EVT_LIST_END_LABEL_EDIT(wxID_ANY,   mmAssetsListCtrl::OnEndLabelEdit)
     EVT_RIGHT_DOWN(mmAssetsListCtrl::OnMouseRightClick)
     EVT_LEFT_DOWN(mmAssetsListCtrl::OnListLeftClick)
@@ -54,10 +52,6 @@ wxBEGIN_EVENT_TABLE(mmAssetsListCtrl, mmListCtrl)
     EVT_MENU(MENU_ON_DUPLICATE_TRANSACTION, mmAssetsListCtrl::OnDuplicateAsset)
 	EVT_MENU(MENU_TREEPOPUP_ORGANIZE_ATTACHMENTS, mmAssetsListCtrl::OnOrganizeAttachments)
 
-    EVT_MENU(MENU_HEADER_HIDE, mmAssetsListCtrl::OnHeaderHide)
-    EVT_MENU(MENU_HEADER_SORT, mmAssetsListCtrl::OnHeaderSort)
-    EVT_MENU(MENU_HEADER_RESET, mmAssetsListCtrl::OnHeaderReset)
-
     EVT_LIST_KEY_DOWN(wxID_ANY, mmAssetsListCtrl::OnListKeyDown)
 wxEND_EVENT_TABLE()
 /*******************************************************/
@@ -67,32 +61,21 @@ mmAssetsListCtrl::mmAssetsListCtrl(mmAssetsPanel* cp, wxWindow *parent, wxWindow
     , m_panel(cp)
 {
     ToggleWindowStyle(wxLC_EDIT_LABELS);
-
-    // load the global variables
-    m_selected_col = Model_Setting::instance().GetIntSetting("ASSETS_SORT_COL", 0);
-    m_asc = Model_Setting::instance().GetBoolSetting("ASSETS_ASC", true);
-}
-
-void mmAssetsListCtrl::OnItemResize(wxListEvent& event)
-{
-    int i = event.GetColumn();
-    int width = event.GetItem().GetWidth();
-    Model_Setting::instance().Set(wxString::Format("ASSETS_COL%d_WIDTH", i), width);
 }
 
 void mmAssetsListCtrl::OnMouseRightClick(wxMouseEvent& event)
 {
-    if (m_selected_row > -1)
-        SetItemState(m_selected_row, 0, wxLIST_STATE_SELECTED | wxLIST_STATE_FOCUSED);
+    if (g_selected_row > -1)
+        SetItemState(g_selected_row, 0, wxLIST_STATE_SELECTED | wxLIST_STATE_FOCUSED);
     int Flags = wxLIST_HITTEST_ONITEM;
-    m_selected_row = HitTest(wxPoint(event.m_x, event.m_y), Flags);
+    g_selected_row = HitTest(wxPoint(event.m_x, event.m_y), Flags);
 
-    if (m_selected_row >= 0)
+    if (g_selected_row >= 0)
     {
-        SetItemState(m_selected_row, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
-        SetItemState(m_selected_row, wxLIST_STATE_FOCUSED, wxLIST_STATE_FOCUSED);
+        SetItemState(g_selected_row, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
+        SetItemState(g_selected_row, wxLIST_STATE_FOCUSED, wxLIST_STATE_FOCUSED);
     }
-    m_panel->updateExtraAssetData(m_selected_row);
+    m_panel->updateExtraAssetData(g_selected_row);
     wxMenu menu;
     menu.Append(MENU_TREEPOPUP_NEW, _("&New Asset"));
     menu.AppendSeparator();
@@ -102,7 +85,7 @@ void mmAssetsListCtrl::OnMouseRightClick(wxMouseEvent& event)
     menu.Append(MENU_TREEPOPUP_DELETE, _("&Delete Asset"));
 	menu.AppendSeparator();
 	menu.Append(MENU_TREEPOPUP_ORGANIZE_ATTACHMENTS, _("&Organize Attachments"));
-    if (m_selected_row < 0)
+    if (g_selected_row < 0)
     {
         menu.Enable(MENU_ON_DUPLICATE_TRANSACTION, false);
         menu.Enable(MENU_TREEPOPUP_EDIT, false);
@@ -118,8 +101,8 @@ void mmAssetsListCtrl::OnListLeftClick(wxMouseEvent& event)
     long index = HitTest(wxPoint(event.m_x, event.m_y), Flags);
     if (index == -1)
     {
-        m_selected_row = -1;
-        m_panel->updateExtraAssetData(m_selected_row);
+        g_selected_row = -1;
+        m_panel->updateExtraAssetData(g_selected_row);
     }
     event.Skip();
 }
@@ -131,8 +114,8 @@ wxString mmAssetsListCtrl::OnGetItemText(long item, long column) const
 
 void mmAssetsListCtrl::OnListItemSelected(wxListEvent& event)
 {
-    m_selected_row = event.GetIndex();
-    m_panel->updateExtraAssetData(m_selected_row);
+    g_selected_row = event.GetIndex();
+    m_panel->updateExtraAssetData(g_selected_row);
 }
 
 int mmAssetsListCtrl::OnGetItemImage(long item) const
@@ -164,12 +147,12 @@ void mmAssetsListCtrl::OnNewAsset(wxCommandEvent& /*event*/)
 
 void mmAssetsListCtrl::doRefreshItems(int trx_id)
 {
-    int selectedIndex = m_panel->initVirtualListControl(trx_id, m_selected_col, m_asc);
+    int selectedIndex = m_panel->initVirtualListControl(trx_id, g_selected_col, g_asc);
 
     long cnt = static_cast<long>(m_panel->m_assets.size());
 
     if (selectedIndex >= cnt || selectedIndex < 0)
-        selectedIndex = m_asc ? cnt - 1 : 0;
+        selectedIndex = g_asc ? cnt - 1 : 0;
 
     if (cnt>0)
         RefreshItems(0, cnt > 0 ? --cnt : 0);
@@ -182,12 +165,12 @@ void mmAssetsListCtrl::doRefreshItems(int trx_id)
         SetItemState(selectedIndex, wxLIST_STATE_FOCUSED, wxLIST_STATE_FOCUSED);
         EnsureVisible(selectedIndex);
     }
-    m_selected_row = selectedIndex;
+    g_selected_row = selectedIndex;
 }
 
 void mmAssetsListCtrl::OnDeleteAsset(wxCommandEvent& /*event*/)
 {
-    if (m_selected_row < 0)    return;
+    if (g_selected_row < 0)    return;
 
     wxMessageDialog msgDlg(this
         , _("Do you really want to delete the Asset?")
@@ -196,19 +179,19 @@ void mmAssetsListCtrl::OnDeleteAsset(wxCommandEvent& /*event*/)
 
     if (msgDlg.ShowModal() == wxID_YES)
     {
-        const Model_Asset::Data& asset = m_panel->m_assets[m_selected_row];
+        const Model_Asset::Data& asset = m_panel->m_assets[g_selected_row];
         Model_Asset::instance().remove(asset.ASSETID);
 		mmAttachmentManage::DeleteAllAttachments(Model_Attachment::reftype_desc(Model_Attachment::ASSET), asset.ASSETID);
 
-        m_panel->initVirtualListControl(m_selected_row, m_selected_col, m_asc);
-        m_selected_row = -1;
-        m_panel->updateExtraAssetData(m_selected_row);
+        m_panel->initVirtualListControl(g_selected_row, g_selected_col, g_asc);
+        g_selected_row = -1;
+        m_panel->updateExtraAssetData(g_selected_row);
     }
 }
 
 void mmAssetsListCtrl::OnEditAsset(wxCommandEvent& /*event*/)
 {
-    if (m_selected_row < 0)     return;
+    if (g_selected_row < 0)     return;
 
     wxListEvent evt(wxEVT_COMMAND_LIST_ITEM_ACTIVATED, wxID_ANY);
     AddPendingEvent(evt);
@@ -216,9 +199,9 @@ void mmAssetsListCtrl::OnEditAsset(wxCommandEvent& /*event*/)
 
 void mmAssetsListCtrl::OnDuplicateAsset(wxCommandEvent& /*event*/)
 {
-    if (m_selected_row < 0)     return;
+    if (g_selected_row < 0)     return;
 
-    const Model_Asset::Data& asset = m_panel->m_assets[m_selected_row];
+    const Model_Asset::Data& asset = m_panel->m_assets[g_selected_row];
     Model_Asset::Data* duplicate_asset = Model_Asset::instance().clone(&asset);
 
     if (EditAsset(duplicate_asset))
@@ -230,10 +213,10 @@ void mmAssetsListCtrl::OnDuplicateAsset(wxCommandEvent& /*event*/)
 
 void mmAssetsListCtrl::OnOrganizeAttachments(wxCommandEvent& /*event*/)
 {
-	if (m_selected_row < 0) return;
+	if (g_selected_row < 0) return;
 
 	wxString RefType = Model_Attachment::reftype_desc(Model_Attachment::ASSET);
-	int RefId = m_panel->m_assets[m_selected_row].ASSETID;
+	int RefId = m_panel->m_assets[g_selected_row].ASSETID;
 
 	mmAttachmentDialog dlg(this, RefType, RefId);
 	dlg.ShowModal();
@@ -243,10 +226,10 @@ void mmAssetsListCtrl::OnOrganizeAttachments(wxCommandEvent& /*event*/)
 
 void mmAssetsListCtrl::OnOpenAttachment(wxCommandEvent& /*event*/)
 {
-	if (m_selected_row < 0) return;
+	if (g_selected_row < 0) return;
 
 	wxString RefType = Model_Attachment::reftype_desc(Model_Attachment::ASSET);
-	int RefId = m_panel->m_assets[m_selected_row].ASSETID;
+	int RefId = m_panel->m_assets[g_selected_row].ASSETID;
 
 	mmAttachmentManage::OpenAttachmentFromPanelIcon(this, RefType, RefId);
 	doRefreshItems(RefId);
@@ -254,11 +237,11 @@ void mmAssetsListCtrl::OnOpenAttachment(wxCommandEvent& /*event*/)
 
 void mmAssetsListCtrl::OnListItemActivated(wxListEvent& event)
 {
-    if (m_selected_row < 0)
+    if (g_selected_row < 0)
     {
-        m_selected_row = event.GetIndex();
+        g_selected_row = event.GetIndex();
     }
-    EditAsset(&(m_panel->m_assets[m_selected_row]));
+    EditAsset(&(m_panel->m_assets[g_selected_row]));
 }
 
 bool mmAssetsListCtrl::EditAsset(Model_Asset::Data* pEntry)
@@ -268,7 +251,7 @@ bool mmAssetsListCtrl::EditAsset(Model_Asset::Data* pEntry)
     if (dlg.ShowModal() == wxID_OK)
     {
         doRefreshItems(dlg.m_asset->ASSETID);
-        m_panel->updateExtraAssetData(m_selected_row);
+        m_panel->updateExtraAssetData(g_selected_row);
     }
     else edit = false;
 
@@ -277,30 +260,24 @@ bool mmAssetsListCtrl::EditAsset(Model_Asset::Data* pEntry)
 
 void mmAssetsListCtrl::OnColClick(wxListEvent& event)
 {
-    int ColumnNr;
-    if (event.GetId() != MENU_HEADER_SORT)
-         ColumnNr = event.GetColumn();
-    else
-         ColumnNr = ColumnHeaderNr;
+    int ColumnNr = event.GetColumn();
+
     if (0 > ColumnNr || ColumnNr >= m_panel->col_max() || ColumnNr == 0) return;
 
-	if (m_selected_col == ColumnNr && event.GetId() != MENU_HEADER_SORT) m_asc = !m_asc;
+	if (g_selected_col == ColumnNr) g_asc = !g_asc;
 
     wxListItem item;
     item.SetMask(wxLIST_MASK_IMAGE);
     item.SetImage(-1);
-    SetColumn(m_selected_col, item);
+    SetColumn(g_selected_col, item);
 
-    m_selected_col = ColumnNr;
+    g_selected_col = ColumnNr;
 
-    item.SetImage(m_asc ? 8 : 7);
-    SetColumn(m_selected_col, item);
-
-    Model_Setting::instance().Set("ASSETS_ASC", m_asc);
-    Model_Setting::instance().Set("ASSETS_SORT_COL", m_selected_col);
+    item.SetImage(g_asc ? 8 : 7);
+    SetColumn(g_selected_col, item);
 
     int trx_id = -1;
-    if (m_selected_row>=0) trx_id = m_panel->m_assets[m_selected_row].ASSETID;
+    if (g_selected_row>=0) trx_id = m_panel->m_assets[g_selected_row].ASSETID;
 
     doRefreshItems(trx_id);
 }
@@ -312,48 +289,6 @@ void mmAssetsListCtrl::OnEndLabelEdit(wxListEvent& event)
     asset->ASSETNAME = event.m_item.m_text;
     Model_Asset::instance().save(asset);
     RefreshItems(event.GetIndex(), event.GetIndex());
-}
-
-void mmAssetsListCtrl::OnColRightClick(wxListEvent& event)
-{
-    ColumnHeaderNr = event.GetColumn();
-    if (0 > ColumnHeaderNr || ColumnHeaderNr >= m_panel->col_max()) return;
-    wxMenu menu;
-    menu.Append(MENU_HEADER_HIDE, _("Hide column"));
-    menu.Append(MENU_HEADER_SORT, _("Order by this column"));
-    menu.Append(MENU_HEADER_RESET, _("Reset columns size"));
-    PopupMenu(&menu);
-    this->SetFocus();
-}
-
-void mmAssetsListCtrl::OnHeaderHide(wxCommandEvent& event)
-{
-    mmAssetsListCtrl::SetColumnWidth(ColumnHeaderNr, 0);
-    const wxString parameter_name = wxString::Format("ASSETS_COL%i_WIDTH", ColumnHeaderNr);
-    Model_Setting::instance().Set(parameter_name, 0);
-}
-
-void mmAssetsListCtrl::OnHeaderSort(wxCommandEvent& event)
-{
-    wxListEvent e;
-    e.SetId(MENU_HEADER_SORT);
-    mmAssetsListCtrl::OnColClick(e);
-}
-
-void mmAssetsListCtrl::OnHeaderReset(wxCommandEvent& event)
-{
-    wxString parameter_name;
-    for (int i = 0; i < m_panel->col_max(); i++)
-    {
-        mmAssetsListCtrl::SetColumnWidth(i, wxLIST_AUTOSIZE_USEHEADER);
-        parameter_name = wxString::Format("ASSETS_COL%i_WIDTH", i);
-        Model_Setting::instance().Set(parameter_name, mmAssetsListCtrl::GetColumnWidth(i));
-    }
-    wxListEvent e;
-    e.SetId(MENU_HEADER_SORT);
-    ColumnHeaderNr = m_panel->col_sort();
-	m_asc = true;
-    mmAssetsListCtrl::OnColClick(e);
 }
 
 /*******************************************************/
@@ -396,7 +331,7 @@ bool mmAssetsPanel::Create(wxWindow *parent
     GetSizer()->Fit(this);
     GetSizer()->SetSizeHints(this);
 
-    initVirtualListControl(-1, m_listCtrlAssets->m_selected_col, m_listCtrlAssets->m_asc);
+    initVirtualListControl(-1, m_listCtrlAssets->g_selected_col, m_listCtrlAssets->g_asc);
     if (!this->m_assets.empty())
         m_listCtrlAssets->EnsureVisible(this->m_assets.size() - 1);
 
@@ -442,7 +377,7 @@ void mmAssetsPanel::CreateControls()
     wxSplitterWindow* itemSplitterWindow10 = new wxSplitterWindow( this, wxID_STATIC,
         wxDefaultPosition, wxSize(200, 200), wxSP_3DBORDER|wxSP_3DSASH|wxNO_BORDER);
 
-    m_listCtrlAssets = new mmAssetsListCtrl(this, itemSplitterWindow10, wxID_ANY);
+    m_listCtrlAssets = new mmAssetsListCtrl(this, itemSplitterWindow10, mmID_ASSETS_LIST);
 
     wxSize imageSize(16, 16);
     m_imageList.reset(new wxImageList(imageSize.GetWidth(), imageSize.GetHeight()));
@@ -458,35 +393,6 @@ void mmAssetsPanel::CreateControls()
     m_imageList->Add(wxBitmap(wxImage(downarrow_xpm).Scale(16, 16)));
 
     m_listCtrlAssets->SetImageList(m_imageList.get(), wxIMAGE_LIST_SMALL);
-
-    m_listCtrlAssets->InsertColumn(COL_ICON, " ", wxLIST_FORMAT_LEFT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("ASSETS_COL%i_WIDTH", COL_ICON), 25));
-
-    m_listCtrlAssets->InsertColumn(COL_ID, _("ID"), wxLIST_FORMAT_RIGHT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("ASSETS_COL%i_WIDTH", COL_ID),
-        wxLIST_AUTOSIZE_USEHEADER));
-
-    m_listCtrlAssets->InsertColumn(COL_NAME, _("Name"), wxLIST_FORMAT_LEFT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("ASSETS_COL%i_WIDTH", COL_NAME), 150));
-
-    m_listCtrlAssets->InsertColumn(COL_TYPE, _("Type"), wxLIST_FORMAT_LEFT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("ASSETS_COL%i_WIDTH", COL_TYPE),
-        wxLIST_AUTOSIZE_USEHEADER));
-
-    m_listCtrlAssets->InsertColumn(COL_VALUE_INITIAL, _("Initial Value"), wxLIST_FORMAT_RIGHT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("ASSETS_COL%i_WIDTH", COL_VALUE_INITIAL),
-        wxLIST_AUTOSIZE_USEHEADER));
-
-    m_listCtrlAssets->InsertColumn(COL_VALUE_CURRENT, _("Current Value"), wxLIST_FORMAT_RIGHT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("ASSETS_COL%i_WIDTH", COL_VALUE_CURRENT),
-        wxLIST_AUTOSIZE_USEHEADER));
-
-    m_listCtrlAssets->InsertColumn(COL_DATE, _("Date"), wxLIST_FORMAT_RIGHT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("ASSETS_COL%i_WIDTH", COL_DATE),
-        wxLIST_AUTOSIZE_USEHEADER));
-
-    m_listCtrlAssets->InsertColumn(COL_NOTES, _("Notes"), wxLIST_FORMAT_LEFT
-        , Model_Setting::instance().GetIntSetting(wxString::Format("ASSETS_COL%i_WIDTH", COL_NOTES), 450));
 
     wxPanel* assets_panel = new wxPanel(itemSplitterWindow10, wxID_ANY
         , wxDefaultPosition, wxDefaultSize, wxNO_BORDER | wxTAB_TRAVERSAL);
@@ -547,7 +453,7 @@ void mmAssetsPanel::sortTable()
 {
     std::sort(this->m_assets.begin(), this->m_assets.end());
     std::stable_sort(this->m_assets.begin(), this->m_assets.end(), SorterBySTARTDATE());
-    switch (this->m_listCtrlAssets->m_selected_col)
+    switch (this->m_listCtrlAssets->g_selected_col)
     {
     case COL_ID:
         std::stable_sort(this->m_assets.begin(), this->m_assets.end(), SorterByASSETID());
@@ -576,7 +482,7 @@ void mmAssetsPanel::sortTable()
         break;
     }
 
-    if (!this->m_listCtrlAssets->m_asc) std::reverse(this->m_assets.begin(), this->m_assets.end());
+    if (!this->m_listCtrlAssets->g_asc) std::reverse(this->m_assets.begin(), this->m_assets.end());
 }
 
 int mmAssetsPanel::initVirtualListControl(int id, int col, bool asc)
@@ -743,11 +649,11 @@ void mmAssetsPanel::OnSearchTxtEntered(wxCommandEvent& event)
     long last = m_listCtrlAssets->GetItemCount();
     long selectedItem = m_listCtrlAssets->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (selectedItem < 0) //nothing selected
-        selectedItem = m_listCtrlAssets->m_asc ? last - 1 : 0;
+        selectedItem = m_listCtrlAssets->g_asc ? last - 1 : 0;
 
     while (selectedItem > 0 && selectedItem <= last)
     {
-        m_listCtrlAssets->m_asc ? selectedItem-- : selectedItem++;
+        m_listCtrlAssets->g_asc ? selectedItem-- : selectedItem++;
         const wxString t = getItem(selectedItem, COL_NOTES).Lower();
         if (t.Matches(search_string + "*"))
         {

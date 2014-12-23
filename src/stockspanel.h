@@ -45,8 +45,8 @@ public:
     void OnEditStocks(wxCommandEvent& event);
     void OnOrganizeAttachments(wxCommandEvent& event);
     void OnOpenAttachment(wxCommandEvent& event);
-    long get_selectedIndex() { return m_selected_row; }
-    int getColumnsNumber() { return ColName_.size(); }
+    long get_selectedIndex() { return g_selected_row; }
+    int getColumnsNumber() { return 13; } //TODO:
     int col_sort() { return COL_DATE; }
     wxString getStockInfo(int selectedIndex) const;
     /* Helper Functions/data */
@@ -67,15 +67,6 @@ private:
     void OnMarkAllTransactions(wxCommandEvent& event);
     void OnListKeyDown(wxListEvent& event);
     void OnListItemSelected(wxListEvent& event);
-    void OnItemResize(wxListEvent& event);
-
-    /* Headers Right Click*/
-    int ColumnHeaderNr;
-    void OnColRightClick(wxListEvent& event);
-    void OnHeaderHide(wxCommandEvent& event);
-    void OnHeaderSort(wxCommandEvent& event);
-    void OnHeaderReset(wxCommandEvent& event);
-
 
     mmStocksPanel* stock_panel_;
     enum EColumn

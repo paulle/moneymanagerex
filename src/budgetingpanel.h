@@ -51,12 +51,6 @@ public:
     void OnListItemActivated(wxListEvent& event);
 
 private:
-    void OnItemResize(wxListEvent& event);
-    void OnColRightClick(wxListEvent& event);
-    void OnHeaderHide(wxCommandEvent& event);
-    void OnHeaderSort(wxCommandEvent& event);
-    void OnHeaderReset(wxCommandEvent& event);
-    int ColumnHeaderNr;
     wxListItemAttr attr3_; // style3
     mmBudgetingPanel* cp_;
     long selectedIndex_;
